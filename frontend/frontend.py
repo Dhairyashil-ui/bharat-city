@@ -1,5 +1,5 @@
 import html
-import time
+import os
 import streamlit as st
 import requests
 import matplotlib.pyplot as plt
@@ -7,7 +7,8 @@ import matplotlib as mpl
 import numpy as np
 import pandas as pd
 
-API_URL = "https://smart-homes-system.onrender.com"
+# Use env var for API URL when running locally, else default to Render deployment
+API_URL = os.environ.get("API_URL", "https://smart-homes-system.onrender.com")
 
 st.set_page_config(
     page_title="Energy Forecast · Dashboard",
@@ -479,7 +480,7 @@ st.session_state.energy_values = values
 # -------------------------------
 st.markdown('<p class="section-label">Load profile</p>', unsafe_allow_html=True)
 
-mpl.rcParams["font.family"] = ["DM Sans", "DejaVu Sans", "sans-serif"]
+mpl.rcParams["font.family"] = ["DejaVu Sans", "sans-serif"]
 chart_bg = "#ffffff"
 plot_fill = "#f8fafc"
 accent = "#4f46e5"
@@ -560,36 +561,16 @@ ai_suggestion = None
 with col1:
     if st.button("Generate forecast", use_container_width=True):
         payload = {"input": values}
-        st.write("Sending:", payload)
-        st.write("URL:", API_URL)
-        
-        with st.spinner("Processing..."):
+        with st.spinner("Processing…"):
             try:
-                retries = 3
-                for attempt in range(retries):
-                    try:
-                        res = requests.post(
-                            f"{API_URL}/predict",
-                            json=payload,
-                            timeout=120,
-                        )
-                        break
-                    except requests.exceptions.RequestException as e:
-                        if attempt < retries - 1:
-                            time.sleep(2)
-                            continue
-                        raise e
-                
-                st.write("Status:", res.status_code)
-                st.write("Response:", res.text)
-                
+                res = requests.post(f"{API_URL}/predict", json=payload, timeout=120)
                 if res.status_code == 200:
                     data = res.json()
-                    st.success(data)
                     if "error" in data:
                         st.error(f"Backend error: {data['error']}")
                     else:
                         prediction = data.get("prediction_MW")
+                        st.success(f"Forecast: **{prediction:.2f} MW**")
                 else:
                     st.error(f"Error {res.status_code}: {res.text}")
             except Exception as e:
@@ -598,39 +579,19 @@ with col1:
 with col2:
     if st.button("Run optimization", use_container_width=True):
         payload = {"input": values, "appliances": appliances}
-        st.write("Sending:", payload)
-        st.write("URL:", API_URL)
-        
-        with st.spinner("Processing..."):
+        with st.spinner("Processing…"):
             try:
-                retries = 3
-                for attempt in range(retries):
-                    try:
-                        res = requests.post(
-                            f"{API_URL}/optimize",
-                            json=payload,
-                            timeout=120,
-                        )
-                        break
-                    except requests.exceptions.RequestException as e:
-                        if attempt < retries - 1:
-                            time.sleep(2)
-                            continue
-                        raise e
-                
-                st.write("Status:", res.status_code)
-                st.write("Response:", res.text)
-                
+                res = requests.post(f"{API_URL}/optimize", json=payload, timeout=120)
                 if res.status_code == 200:
                     data = res.json()
-                    st.success(data)
                     if "error" in data:
                         st.error(f"Backend error: {data['error']}")
                     else:
-                        prediction = data.get("prediction_MW")
-                        status = data.get("status")
-                        suggestion = data.get("suggestion")
+                        prediction    = data.get("prediction_MW")
+                        status        = data.get("status")
+                        suggestion    = data.get("suggestion")
                         ai_suggestion = data.get("ai_suggestion", "")
+                        st.success(f"Optimization complete — **{status}** at {prediction:.2f} MW")
                 else:
                     st.error(f"Error {res.status_code}: {res.text}")
             except Exception as e:
@@ -639,7 +600,7 @@ with col2:
 # -------------------------------
 # KPI CARDS
 # -------------------------------
-if prediction:
+if prediction is not None:
 
     def _status_class(s: str) -> str:
         if not s:
