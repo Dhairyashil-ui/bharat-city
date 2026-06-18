@@ -7,7 +7,7 @@ import matplotlib as mpl
 import numpy as np
 import pandas as pd
 
-API_URL = os.environ.get("API_URL", "https://smart-homes-system.onrender.com")
+API_URL = os.environ.get("API_URL", "https://bharat-city.onrender.com")
 
 st.set_page_config(
     page_title="SmartHome Energy · Dashboard",
